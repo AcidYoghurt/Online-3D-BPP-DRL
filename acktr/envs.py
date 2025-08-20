@@ -1,9 +1,10 @@
 import os
 
-import gym
+import gymnasium as gym
 import numpy as np
 import torch
-from gym.spaces.box import Box
+from gymnasium.spaces.box import  Box
+from gymnasium.utils import seeding
 from baselines import bench
 from baselines.common.vec_env import VecEnvWrapper
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
@@ -44,7 +45,11 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, args):
             env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
         # if is_atari:
         #     env = make_atari(env_id)
-        env.seed(seed + rank)
+        # The old gym `env.seed()` is deprecated. The new gymnasium API uses `reset(seed=...)`.
+        # However, the baselines framework expects seeding to happen at creation time.
+        # We can manually set the environment's random number generator, which is what `seed()` used to do.
+        rng, _ = seeding.np_random(seed + rank)
+        env.np_random = rng
 
         obs_shape = env.observation_space.shape
 

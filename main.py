@@ -12,9 +12,9 @@ from acktr.arguments import get_args
 from acktr.model import Policy
 from acktr.storage import RolloutStorage
 from evaluation import evaluate
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter # type: ignore
 from unified_test import unified_test
-from gym.envs.registration import register
+from gymnasium.envs.registration import register
 
 def main(args):
     # input arguments about environment
@@ -231,4 +231,3 @@ if __name__ == "__main__":
     registration_envs()
     args = get_args()
     main(args)
-

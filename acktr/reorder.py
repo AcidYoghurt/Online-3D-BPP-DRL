@@ -1,6 +1,6 @@
 import numpy as np
 import copy
-import gym
+import gymnasium as gym
 import math
 import itertools
 
@@ -63,7 +63,7 @@ class ReorderTree(object):
         # the network of single step
         self.nmodel = nmodel
         # the shape of the action mask
-        self.mask_shape = env.bin_size[:2]
+        self.mask_shape = env.unwrapped.bin_size[:2]
         self.mask_len = self.mask_shape[0] * self.mask_shape[1]
         # copy the env and box list
         self.env = copy.deepcopy(env)
@@ -100,8 +100,8 @@ class ReorderTree(object):
         return mixed_mask
 
     def get_mixed_obs(self, masks, real_idx, raw_obs):
-        max_height = self.env.bin_size[-1]
-        new_obs = copy.deepcopy(raw_obs).reshape(self.env.bin_size[:2])
+        max_height = self.env.unwrapped.bin_size[-1]
+        new_obs = copy.deepcopy(raw_obs).reshape(self.env.unwrapped.bin_size[:2])
         new_obs = new_obs.reshape(-1)
         for i in range(real_idx+1, self.box_num):
             new_obs = max_height * (1 - masks[i]) + new_obs * masks[i]
@@ -114,7 +114,7 @@ class ReorderTree(object):
         return cmask.reshape(-1)
 
     def will_terminate(self,  mixed_obs):
-        max_height = self.env.bin_size[-1]
+        max_height = self.env.unwrapped.bin_size[-1]
         # rsum = np.sum(raw_mask)
         ssum = np.sum(mixed_obs)
         # print(rsum, ssum)
@@ -161,8 +161,8 @@ class ReorderTree(object):
             return
         idx = next_node.number
         cur_box = self.box_list[idx]
-        cur_env.box_creator.box_list = [cur_box, self.env.bin_size]
-        cur_obs = cur_env.cur_observation
+        cur_env.unwrapped.box_creator.box_list = [cur_box, self.env.unwrapped.bin_size]
+        cur_obs = cur_env.unwrapped.cur_observation
 
         # print(cur_obs[0:100].reshape(10,10))
         # print(idx, cur_box)
@@ -174,11 +174,13 @@ class ReorderTree(object):
         # will_terminate = False
         # # if may_terminate:
         # tmp_env = copy.deepcopy(cur_env)
-        # next_obs, reward, done, _ = tmp_env.step([pos])
+        # next_obs, reward, terminated, truncated, _ = tmp_env.step([pos])
+        # done = terminated or truncated
         # if done:
         #     will_terminate = True
 
-        next_obs, reward, done, _ = cur_env.step([pos])
+        next_obs, reward, terminated, truncated, _ = cur_env.step([pos])
+        done = terminated or truncated
 
         if done or will_terminate: 
             fail_flag = False
@@ -224,7 +226,7 @@ class ReorderTree(object):
 
     def get_baseline(self):
         env = copy.deepcopy(self.env)
-        obs = env.cur_observation
+        obs = env.unwrapped.cur_observation
         nor_exp = 0
         nor_act = None
         area = self.mask_len
@@ -233,7 +235,8 @@ class ReorderTree(object):
             act = np.argmax(poss)
             if i == 0:
                 nor_act = act
-            obs, reward, done, info = env.step([act])
+            obs, reward, terminated, truncated, info = env.step([act])
+            done = terminated or truncated
             if done:
                 nor_exp += 0
                 return nor_exp, nor_act

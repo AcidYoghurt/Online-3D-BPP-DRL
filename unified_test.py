@@ -1,25 +1,26 @@
-from time import clock
+import time
 from acktr.model_loader import nnModel
 from acktr.reorder import ReorderTree
-import gym
+import gymnasium as gym
 import copy
-from gym.envs.registration import register
+from gymnasium.envs.registration import register
 from acktr.arguments import get_args
 
 def run_sequence(nmodel, raw_env, preview_num, c_bound):
     env = copy.deepcopy(raw_env)
-    obs = env.cur_observation
+    obs = env.unwrapped.cur_observation
     default_counter = 0
     box_counter = 0
-    start = clock()
+    start = time.perf_counter()
     while True:
-        box_list = env.box_creator.preview(preview_num)
+        box_list = env.unwrapped.box_creator.preview(preview_num)
         # print(box_list)
         tree = ReorderTree(nmodel, box_list, env, times=100)
         act, val, default = tree.reorder_search()
-        obs, _, done, info = env.step([act])
+        obs, _, terminated, truncated, info = env.step([act])
+        done = terminated or truncated
         if done:
-            end = clock()
+            end = time.perf_counter()
             print('Time cost:', end-start)
             print('Ratio:', info['ratio'])
             return info['ratio'], info['counter'], end-start,default_counter/box_counter
@@ -49,7 +50,7 @@ def unified_test(url,  args, pruning_threshold = 0.5):
         if i % 10 == 0:
             print('case', i+1)
         env.reset()
-        env.box_creator.preview(500)
+        env.unwrapped.box_creator.preview(500)
         ratio, counter, time, depen_rate = run_sequence(nmodel, env, args.preview, c_bound)
         avg_ratio += ratio
         ratios.append(ratio)

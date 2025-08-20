@@ -1,7 +1,7 @@
 from .space import Space
 import numpy as np
 import copy
-import gym
+import gymnasium as gym
 from .cutCreator import CuttingBoxCreator
 from .mdCreator  import MDlayerBoxCreator
 from .binCreator import RandomBoxCreator, LoadBoxCreator, BoxCreator
@@ -52,18 +52,20 @@ class PackingGame(gym.Env):
         z_plain = np.ones(self.space.plain_size[:2], dtype=np.int32) * self.next_box[2]
         return (x_plain, y_plain, z_plain)
 
-    def reset(self):
+    def reset(self, *, seed=None, options=None):
+        super().reset(seed=seed)
         self.box_creator.reset()
         self.space = Space(*self.bin_size)
         self.box_creator.generate_box_size()
-        return self.cur_observation
+        return self.cur_observation, {}
 
     @property
     def cur_observation(self):
         hmap = self.space.plain
         # mask = self.get_possible_position()
         size = self.get_box_plain()
-        return np.reshape(np.stack((hmap,  *size)), newshape=(-1,))
+        obs = np.stack((hmap,  *size))
+        return np.reshape(obs, newshape=(-1,)).astype(np.float32)
 
     @property
     def next_box(self):
@@ -107,9 +109,9 @@ class PackingGame(gym.Env):
 
         if not succeeded:
             reward = 0.0
-            done = True
+            terminated = True
             info = {'counter':len(self.space.boxes), 'ratio':self.space.get_ratio(), 'mask':np.ones(shape=self.act_len)}
-            return self.cur_observation, reward, done, info
+            return self.cur_observation, reward, terminated, False, info
 
         box_ratio = self.get_box_ratio()
 
@@ -119,10 +121,9 @@ class PackingGame(gym.Env):
         plain = self.space.plain
 
         reward = box_ratio * 10
-        done = False
+        terminated = False
         info = dict()
         info['counter'] = len(self.space.boxes)
         info['ratio'] = self.space.get_ratio()
         # info['mask'] = self.get_possible_position().reshape((-1,))
-        return self.cur_observation, reward, done, info
-
+        return self.cur_observation, reward, terminated, False, info
